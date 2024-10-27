@@ -302,30 +302,73 @@ def farmer_details(request):
         'farmer_details': farmer_details
     })
 
-'''
+
+PRODUCT_CHOICES = [
+    ('Muar Gading', 'Muar Gading'),
+    ('Caesar', 'Caesar'),
+    ('Hg Deli Baling', 'Hg Deli Baling'),
+    ('Jarum Emas', 'Jarum Emas'),
+    ('E35', 'E35'),
+    ('Binjai', 'Binjai'),
+    ('Malwana', 'Malwana'),
+    ('School Boy', 'School Boy'),
+    ('Maharlika', 'Maharlika'),
+    ('Rongrien', 'Rongrien'),
+    ('Rambutan N18', 'Rambutan N18'),
+    ('other', 'Other'),
+]
+CATEGORY_CHOICES = [
+        ('fresh_fruit', 'Fresh Fruit'),
+        ('juice', 'Juice'),
+        ('pickle', 'Pickle'),
+        ('wine', 'Wine'),
+        
+    ]
+
 @login_required
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def post_rambutan(request):
-    try:
-        farmer_details = request.user.farmerdetails 
-        print(farmer_details)
-    except FarmerDetails.DoesNotExist:
-        return redirect('farmer_details') 
+    if request.method == "POST":
+        product = request.POST.get('product')
+        category = request.POST.get('category') 
+        quantity_type = request.POST.get('quantity_type')
+        quantity = request.POST.get('quantity')
+        price = request.POST.get('price')
+        description = request.POST.get('description')
+        other_product_name = request.POST.get('other_product') if product == 'other' else None
+        image = request.FILES.get('image')
 
-    if request.method == 'POST':
-        print(request.POST)
-        form = RambutanPostForm(request.POST,request.FILES)
-        if form.is_valid():
-            rambutan_post = form.save(commit=False)
-            rambutan_post.farmer = farmer_details  
-            rambutan_post.quantity_left = rambutan_post.quantity  
-            rambutan_post.save()
-            return redirect('view_posts')  
-    else:
-        form = RambutanPostForm()
+        # Retrieve farmer; if not found, redirect to complete profile
+        try:
+            farmer = FarmerDetails.objects.get(user=request.user)
+        except FarmerDetails.DoesNotExist:
+           # messages.error(request, _("Please complete your profile before posting."))
+            return redirect(reverse('complete_profile'))  # Redirect to profile completion page
 
-    return render(request, 'post_rambutan.html', {'form': form ,'farmer_details': farmer_details})
-'''
+        # Ensure 'Other' has a name
+        if product == 'other' and not other_product_name:
+           # messages.error(request, _("Please enter a product name for 'Other' selection."))
+            return redirect(reverse('post_rambutan'))
+
+        # Save the rambutan post
+        rambutan_post = RambutanPost(
+            farmer=farmer,
+            product=other_product_name if product == 'other' else product,
+            category=category,
+            quantity_type=quantity_type,
+            quantity=quantity,
+            quantity_left=quantity,
+            price=price,
+            description=description,
+            image=image
+        )
+        rambutan_post.save()
+
+       # messages.success(request, _("Your rambutan post has been created successfully!"))
+        return HttpResponseRedirect(reverse('view_posts'))
+
+    context = {'PRODUCT_CHOICES': PRODUCT_CHOICES}
+    return render(request, 'post_rambutan.html', context)
 
 def create_tree_variety(request):
     if request.method == 'POST':
@@ -1059,74 +1102,3 @@ def edit_customer_profile(request):
         #messages.success(request, 'Your profile has been updated successfully!')
         return redirect('profile_view')  # Redirect to profile view after saving
     return render(request, 'edit_customer_profile.html', {'user': user})  # Pass user to the template
-
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse
-from django.contrib import messages
-from django.utils.translation import gettext_lazy as _
-
-PRODUCT_CHOICES = [
-    ('Muar Gading', 'Muar Gading'),
-    ('Caesar', 'Caesar'),
-    ('Hg Deli Baling', 'Hg Deli Baling'),
-    ('Jarum Emas', 'Jarum Emas'),
-    ('E35', 'E35'),
-    ('Binjai', 'Binjai'),
-    ('Malwana', 'Malwana'),
-    ('School Boy', 'School Boy'),
-    ('Maharlika', 'Maharlika'),
-    ('Rongrien', 'Rongrien'),
-    ('Rambutan N18', 'Rambutan N18'),
-    ('other', 'Other'),
-]
-CATEGORY_CHOICES = [
-        ('fresh_fruit', 'Fresh Fruit'),
-        ('juice', 'Juice'),
-        ('pickle', 'Pickle'),
-        ('wine', 'Wine'),
-        
-    ]
-@login_required
-def post_rambutan(request):
-    if request.method == "POST":
-        product = request.POST.get('product')
-        category = request.POST.get('category') 
-        quantity_type = request.POST.get('quantity_type')
-        quantity = request.POST.get('quantity')
-        price = request.POST.get('price')
-        description = request.POST.get('description')
-        other_product_name = request.POST.get('other_product') if product == 'other' else None
-        image = request.FILES.get('image')
-
-        # Retrieve farmer; if not found, redirect to complete profile
-        try:
-            farmer = FarmerDetails.objects.get(user=request.user)
-        except FarmerDetails.DoesNotExist:
-           # messages.error(request, _("Please complete your profile before posting."))
-            return redirect(reverse('complete_profile'))  # Redirect to profile completion page
-
-        # Ensure 'Other' has a name
-        if product == 'other' and not other_product_name:
-           # messages.error(request, _("Please enter a product name for 'Other' selection."))
-            return redirect(reverse('post_rambutan'))
-
-        # Save the rambutan post
-        rambutan_post = RambutanPost(
-            farmer=farmer,
-            product=other_product_name if product == 'other' else product,
-            category=category,
-            quantity_type=quantity_type,
-            quantity=quantity,
-            quantity_left=quantity,
-            price=price,
-            description=description,
-            image=image
-        )
-        rambutan_post.save()
-
-       # messages.success(request, _("Your rambutan post has been created successfully!"))
-        return HttpResponseRedirect(reverse('view_posts'))
-
-    context = {'PRODUCT_CHOICES': PRODUCT_CHOICES}
-    return render(request, 'post_rambutan.html', context)
