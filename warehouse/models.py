@@ -234,6 +234,7 @@ class Order(models.Model):
     order_number = models.AutoField(primary_key=True)  
     created_at = models.DateTimeField(default=timezone.now)
     STATUS_CHOICES = [
+        ('cancelled','cancelled'),
         ('pending', 'Pending'),
         ('processed', 'Processed'),
         ('shipped', 'Shipped'),

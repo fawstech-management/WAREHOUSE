@@ -906,7 +906,7 @@ def place_order(request):
         'total': total,
     })
 
-'''from datetime import timedelta
+from datetime import timedelta
 from django.utils import timezone
 
 @login_required
@@ -914,8 +914,6 @@ from django.utils import timezone
 def order_detail(request, order_number):
     try:
         order = Order.objects.get(order_number=order_number, user=request.user)
-        tracking_stages = ["ordered", "packed", "shipped", "out_for_delivery", "delivered"]
-
         order_items = OrderItem.objects.filter(order=order)
         billing_details = order.billing_detail
         subtotal = sum(item.price * item.quantity for item in order_items)
@@ -923,8 +921,7 @@ def order_detail(request, order_number):
         platform_fee = 0
         total = subtotal + delivery_fee + platform_fee
         
-        # Check if the order can be deleted
-        delete_allowed = order.created_at >= timezone.now() - timedelta(hours=48)
+       
     except Order.DoesNotExist:
         return redirect('order')
 
@@ -936,62 +933,19 @@ def order_detail(request, order_number):
         'delivery_fee': delivery_fee,
         'platform_fee': platform_fee,
         'total': total,
-        'delete_allowed': delete_allowed,
-        'tracking_stages': tracking_stages,
-    })'''
-'''from datetime import timedelta
-from django.utils import timezone
-from django.shortcuts import redirect, render
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.cache import cache_control
-
-@login_required
-@cache_control(no_cache=True, must_revalidate=True, no_store=True)
-def order_detail(request, order_number):
-    try:
-        order = Order.objects.get(order_number=order_number, user=request.user)
-        tracking_stages = ["ordered", "packed", "shipped", "out_for_delivery", "delivered"]
-
-        # Set the order status based on the time elapsed since creation
-        current_time = timezone.now()
-        elapsed_time = current_time - order.created_at
-
-        if elapsed_time < timedelta(days=1):
-            order_status = "ordered"
-        elif elapsed_time < timedelta(days=2):
-            order_status = "processed"  # Order is processed after 1 day
-        elif elapsed_time < timedelta(days=4):
-            order_status = "shipped"  # Order is shipped after 2 days
-        else:
-            order_status = "delivered"  # Order is delivered after 4 days
-
-        order_items = OrderItem.objects.filter(order=order)
-        billing_details = order.billing_detail
-        subtotal = sum(item.price * item.quantity for item in order_items)
-        delivery_fee = 0  # Set your delivery fee logic here
-        platform_fee = 0  # Set your platform fee logic here
-        total = subtotal + delivery_fee + platform_fee
         
-        # Check if the order can be deleted
-        delete_allowed = order.created_at >= timezone.now() - timedelta(hours=48)
-    except Order.DoesNotExist:
-        return redirect('order')
-
-    return render(request, 'order_history.html', {
-        'order': order,
-        'order_items': order_items,
-        'billing_details': billing_details,
-        'subtotal': subtotal,
-        'delivery_fee': delivery_fee,
-        'platform_fee': platform_fee,
-        'total': total,
-        'delete_allowed': delete_allowed,
-        'tracking_stages': tracking_stages,
-        'order_status': order_status,  # Pass the order status to the template
     })
 
 '''
-from django.shortcuts import render, redirect
+@login_required
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def order_history(request):
+    orders = Order.objects.filter(user=request.user).prefetch_related('items')
+    return render(request, 'order_history.html', {
+        'orders': orders
+    })
+'''
+from django.shortcuts import render
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import cache_control
@@ -1000,11 +954,13 @@ from .models import Order, OrderItem
 
 @login_required
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
-def order_detail(request, order_number):
-    try:
-        order = Order.objects.get(order_number=order_number, user=request.user)
-        tracking_stages = ["ordered", "packed", "shipped", "out_for_delivery", "delivered"]
+def order_history(request):
+    orders = Order.objects.filter(user=request.user).prefetch_related('items')
+    order_details = []
 
+    for order in orders:
+        tracking_stages = ["ordered", "packed", "shipped", "out_for_delivery", "delivered"]
+        
         # Set the order status based on the time elapsed since creation
         current_time = timezone.now()
         elapsed_time = current_time - order.created_at
@@ -1037,38 +993,53 @@ def order_detail(request, order_number):
             for stage in stage_status:
                 stage_status[stage] = 'active'
 
+        # Calculate order totals
         order_items = OrderItem.objects.filter(order=order)
-        billing_details = order.billing_detail
         subtotal = sum(item.price * item.quantity for item in order_items)
         delivery_fee = 0  # Set your delivery fee logic here
         platform_fee = 0  # Set your platform fee logic here
         total = subtotal + delivery_fee + platform_fee
-        
+
         # Check if the order can be deleted
         delete_allowed = order.created_at >= timezone.now() - timedelta(hours=48)
-    except Order.DoesNotExist:
-        return redirect('order')
+
+        # Append the order details to the list
+        order_details.append({
+            'order': order,
+            'order_items': order_items,
+            'subtotal': subtotal,
+            'delivery_fee': delivery_fee,
+            'platform_fee': platform_fee,
+            'total': total,
+            'delete_allowed': delete_allowed,
+            'stage_status': stage_status,
+        })
 
     return render(request, 'order_history.html', {
-        'order': order,
-        'order_items': order_items,
-        'billing_details': billing_details,
-        'subtotal': subtotal,
-        'delivery_fee': delivery_fee,
-        'platform_fee': platform_fee,
-        'total': total,
-        'delete_allowed': delete_allowed,
-        'stage_status': stage_status,  # Pass the stage statuses to the template
+        'order_details': order_details,
     })
-
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from .models import Order
+from datetime import timedelta
 
 @login_required
-@cache_control(no_cache=True, must_revalidate=True, no_store=True)
-def order_history(request):
-    orders = Order.objects.filter(user=request.user).prefetch_related('items')
-    return render(request, 'order_history.html', {
-        'orders': orders
-    })
+def cancel_order(request, order_number):
+    order = get_object_or_404(Order, order_number=order_number, user=request.user)
+
+    # Check if the order is eligible for cancellation (created within the last 48 hours)
+    if order.created_at >= timezone.now() - timedelta(hours=48):
+        # Set the order status to "Cancelled"
+        order.status = 'Cancelled'
+        order.save()
+        
+        # Now delete the order from the database
+        order.delete()
+
+    # Redirect back to the order history page after cancellation
+    return redirect('order_history')
+
 
 @login_required
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)

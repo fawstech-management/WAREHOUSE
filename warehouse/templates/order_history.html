@@ -610,64 +610,54 @@
         </nav>
 
         
-    <!-- Main Content -->
-    <div class="main-content">
-        <h1>Your Order History</h1>
-
-        <div class="order-listing">
-            {% if orders %}
-                {% for order in orders %}
-                <div class="order-card">
-                    <h3>Order ID: {{ order.order_number }}</h3>
-                    <p>Status: <span class="order-status">{{ order.status }}</span></p>
-                    <p>Order Date: {{ order.created_at|date:"F j, Y" }}</p>
-                    <p>Total: <span class="price">₹{{ order.total_amount }}</span></p>
-
-                    <h4>Items:</h4>
-                    <ul class="order-items">
-                        {% for item in order.items.all %}
-                       <!-- Corrected from order.items.all to order_items -->
-                        <div class="cart-item">
-                            <img src="/media/{{ item.rambutan_post.image }}" alt="{{ item.name }}" width="100px">
-                            <div>{{ item.rambutan_post.product}} (x{{ item.quantity }})</div>
-                            <div>₹{{ item.price }}</div>
+        <div class="main-content">
+            <h1>Your Order History</h1>
+        
+            <div class="order-listing">
+                {% if order_details %}
+                    {% for details in order_details %}
+                        <div class="order-card">
+                            <h3>Order ID: {{ details.order.order_number }}</h3>
+                            <p>Status: <span class="order-status">{{ details.order.status }}</span></p>
+                            <p>Order Date: {{ details.order.created_at|date:"F j, Y" }}</p>
+                            <p>Total: <span class="price">₹{{ details.total }}</span></p>
+        
+                            <h4>Items:</h4>
+                            <ul class="order-items">
+                                {% for item in details.order_items %}
+                                    <div class="cart-item">
+                                        <img src="{{ item.rambutan_post.image.url }}" alt="{{ item.rambutan_post.product }}" width="100px">
+                                        <div>{{ item.rambutan_post.product }} (x{{ item.quantity }})</div>
+                                        <div>₹{{ item.price }}</div>
+                                    </div>
+                                {% endfor %}
+                            </ul>
+        
+                            <div class="tracking-container">
+                                {% for stage, status in details.stage_status.items %}
+                                    <div class="tracking-stage {% if status == 'active' %}stage-active{% else %}stage-inactive{% endif %}">
+                                        <div class="stage-icon">{{ forloop.counter }}</div>
+                                        <div class="stage-line"></div>
+                                        <div class="stage-name">{{ stage|capfirst }}</div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+        
+                            <!-- Cancel Order Button -->
+                            {% if details.delete_allowed %}
+                                <form action="{% url 'cancel_order' details.order.order_number %}" method="post" class="cancel-order-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger">Cancel Order</button>
+                                </form>
+                            {% endif %}
                         </div>
-                        {% endfor %}
-                    </ul>
-
-                    <div class="tracking-container">
-                        <div class="tracking-stage {% if stage_status.order_status == 'active' %}stage-active{% else %}stage-inactive{% endif %}">
-                            <div class="stage-icon">1</div>
-                            <div class="stage-line"></div>
-                            <div class="stage-name">Order Placed</div>
-                        </div>
-                        <div class="tracking-stage {% if stage_status.packed == 'active' %}stage-active{% else %}stage-inactive{% endif %}">
-                            <div class="stage-icon">2</div>
-                            <div class="stage-line"></div>
-                            <div class="stage-name">Packed</div>
-                        </div>
-                        <div class="tracking-stage {% if stage_status.shipped == 'active' %}stage-active{% else %}stage-inactive{% endif %}">
-                            <div class="stage-icon">3</div>
-                            <div class="stage-line"></div>
-                            <div class="stage-name">Shipped</div>
-                        </div>
-                        <div class="tracking-stage {% if stage_status.out_for_delivery == 'active' %}stage-active{% else %}stage-inactive{% endif %}">
-                            <div class="stage-icon">4</div>
-                            <div class="stage-line"></div>
-                            <div class="stage-name">Out for Delivery</div>
-                        </div>
-                        <div class="tracking-stage {% if stage_status.delivered == 'active' %}stage-active{% else %}stage-inactive{% endif %}">
-                            <div class="stage-icon">5</div>
-                            <div class="stage-line"></div>
-                            <div class="stage-name">Delivered</div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="no-orders">No orders found.</div>
-            {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div class="no-orders">No orders found.</div>
+                {% endif %}
+            </div>
         </div>
+        
 
         <div class="go-home">
             <a href="{% url 'customer_dashboard' %}">Go to Home</a>

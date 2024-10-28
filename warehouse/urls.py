@@ -59,7 +59,7 @@ urlpatterns = [
     path('order/<int:order_id>/delete/', views.delete_order, name='delete_order'),
     path('edit-farmer-profile/', views.edit_farmer_profile, name='edit_farmer_profile'),
     path('edit-profile/', views.edit_customer_profile, name='edit_customer_profile'),
-
+    path('cancel_order/<str:order_number>/', views.cancel_order, name='cancel_order'),
 
 
     path('login/', auth_views.LoginView.as_view(), name='login'),
