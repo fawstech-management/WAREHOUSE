@@ -1,3 +1,5 @@
+from datetime import timezone
+from django.utils import timezone
 from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import User
@@ -128,7 +130,7 @@ class RambutanPost(models.Model):
     
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
 
-    quantity_type = models.CharField(max_length=10, choices=[('kg', 'Kilograms'), ('litre', 'Litres')])
+    quantity_type = models.CharField(max_length=10, choices=[('kg', 'Kilograms'), ('L', 'Litres')])
     quantity = models.PositiveIntegerField(default=1)
     quantity_left = models.PositiveIntegerField(default=0)
     price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -230,8 +232,14 @@ class Order(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_method = models.CharField(max_length=50)
     order_number = models.AutoField(primary_key=True)  
-    created_at = models.DateTimeField(auto_now_add=True)
-
+    created_at = models.DateTimeField(default=timezone.now)
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processed', 'Processed'),
+        ('shipped', 'Shipped'),
+        ('delivered', 'Delivered')
+    ]
+    order_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     class Meta:
         ordering = ['-created_at']  
 

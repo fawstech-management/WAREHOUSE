@@ -401,7 +401,7 @@
             <img src="/media/{{ post.image }}" alt="{{ post.name }}" width="100px"><br>
             <strong>product:</strong> {{ post.product }}<br>
             <strong>Category:</strong> {{ post.category }}<br>
-            <strong>Quantity:</strong> {{ post.quantity }} kg<br>
+            <strong>Quantity:</strong> {{ post.quantity }}  {{post.quantity_type }}<br>
             <strong>Price:</strong> {{ post.price }}<br>
             <strong>Description:</strong> {{ post.description }}<br>
             <strong>Quantity Left:</strong>{{ post.quantity_left }}<br>
@@ -426,7 +426,7 @@
                 <img src="/media/{{ post.image }}" alt="{{ post.name }}" width="100px"><br>
                 <strong>Name:</strong> {{ post.product }}<br>
                 <strong>Category:</strong> {{ post.category }}<br>
-                <strong>Quantity:</strong> {{ post.quantity_left }} kg<br>
+                <strong>Quantity:</strong> {{ post.quantity_left }} {{post.quantity_type }}<br>
                 <strong>Price:</strong> {{ post.price }}<br>
                 <strong>Description:</strong> {{ post.description }}<br>
                 <strong>Status:</strong> Out of Stock<br>

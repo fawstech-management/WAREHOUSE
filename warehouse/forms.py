@@ -203,9 +203,11 @@ from .models import RambutanPost, Wishlist
 class RambutanPostForm(forms.ModelForm):
     class Meta:
         model = RambutanPost
-        fields = [ 'product', 'quantity_type', 'quantity', 'quantity_left', 'price', 'image', 'description']
+        fields = [ 'product','category','quantity_type', 'quantity', 'quantity_left', 'price', 'image', 'description']
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
+             'price': forms.NumberInput(attrs={'min': 1, 'step': 0.01}),
+             'quantity': forms.NumberInput(attrs={'min': 1, 'value': 1}),  
         }
 
 class WishlistForm(forms.ModelForm):

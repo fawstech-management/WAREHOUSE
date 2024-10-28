@@ -1,3 +1,4 @@
+from datetime import timezone
 import random
 from urllib import request
 from django.forms import ValidationError
@@ -405,7 +406,7 @@ def view_posts(request):
     }
 
     return render(request, 'view_posts.html', context)
-
+'''
 @login_required
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def update_post(request, id):
@@ -428,6 +429,45 @@ def update_post(request, id):
         else:
             return render(request, 'update_post.html', {'form': form, 'post': post})
 
+    else:
+        form = RambutanPostForm(instance=post)
+        return render(request, 'update_post.html', {'form': form, 'post': post})
+'''
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import cache_control
+from .models import RambutanPost, FarmerDetails
+from .forms import RambutanPostForm
+
+@login_required
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def update_post(request, id):
+    post = get_object_or_404(RambutanPost, id=id)
+    farmer_details = get_object_or_404(FarmerDetails, user=request.user)
+
+    if request.method == 'POST':
+        form = RambutanPostForm(request.POST, request.FILES, instance=post)
+
+        if form.is_valid():
+            updated_post = form.save(commit=False)
+            updated_post.farmer = farmer_details
+
+            # Set quantity_left to quantity value
+            updated_post.quantity_left = updated_post.quantity
+
+            # Handle "other" product option if selected
+            if form.cleaned_data.get('product') == 'other':
+                updated_post.product = request.POST.get('other_product')
+            else:
+                updated_post.product = form.cleaned_data.get('product')
+
+            # Ensure that category is set to avoid IntegrityError
+            updated_post.category = form.cleaned_data.get('category')
+            updated_post.is_available = True
+            updated_post.save()
+            return redirect('view_posts')
+        else:
+            return render(request, 'update_post.html', {'form': form, 'post': post})
     else:
         form = RambutanPostForm(instance=post)
         return render(request, 'update_post.html', {'form': form, 'post': post})
@@ -542,11 +582,11 @@ def blog(request):
 def profile_view(request):
    
     return render(request, 'customer_profile.html')
-    
+'''    
 @login_required
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def products_browse(request):
-    products = RambutanPost.objects.all().values('id', 'product', 'category', 'image', 'price', 'created_at', 'description', 'is_available', 'quantity_left','farmer')
+    products = RambutanPost.objects.all().values('id', 'product', 'category', 'image', 'price', 'created_at', 'description', 'is_available', 'quantity_left','farmer','quantity_type')
     
     cart_items = Cart.objects.filter(user=request.user).values_list('rambutan_post_id', flat=True)
     wishlist_items = Wishlist.objects.filter(user=request.user).values_list('rambutan_post_id', flat=True)
@@ -559,6 +599,38 @@ def products_browse(request):
 
     context = {
         'products': products,
+    }
+    return render(request, 'shop.html', context)
+'''
+@login_required
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def products_browse(request):
+    category_filter = request.GET.get('category', '')  # Get the selected category from the URL parameters
+
+    # Filter products by category if a category filter is applied
+    products_query = RambutanPost.objects.all()
+    if category_filter:
+        products_query = products_query.filter(category=category_filter)
+
+    products = products_query.values(
+        'id', 'product', 'category', 'image', 'price', 'created_at', 'description',
+        'is_available', 'quantity_left', 'farmer','quantity_type'
+    )
+
+    # Handle cart and wishlist items
+    cart_items = Cart.objects.filter(user=request.user).values_list('rambutan_post_id', flat=True)
+    wishlist_items = Wishlist.objects.filter(user=request.user).values_list('rambutan_post_id', flat=True)
+
+    # Add status messages
+    for product in products:
+        if product['quantity_left'] <= 0:
+            product['status_message'] = 'Out of Stock'
+        elif not product['is_available']:
+            product['status_message'] = 'Unavailable'
+
+    context = {
+        'products': products,
+        'category_filter': category_filter  # Pass the selected category to the template
     }
     return render(request, 'shop.html', context)
 
@@ -834,35 +906,161 @@ def place_order(request):
         'total': total,
     })
 
+'''from datetime import timedelta
+from django.utils import timezone
 
 @login_required
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def order_detail(request, order_number):
     try:
         order = Order.objects.get(order_number=order_number, user=request.user)
-        
-        order_items = OrderItem.objects.filter(order=order)  
-        
+        tracking_stages = ["ordered", "packed", "shipped", "out_for_delivery", "delivered"]
+
+        order_items = OrderItem.objects.filter(order=order)
         billing_details = order.billing_detail
         subtotal = sum(item.price * item.quantity for item in order_items)
-        delivery_fee = 40 
-        platform_fee = 10
-        # discount = 0     
+        delivery_fee = 0
+        platform_fee = 0
         total = subtotal + delivery_fee + platform_fee
-
+        
+        # Check if the order can be deleted
+        delete_allowed = order.created_at >= timezone.now() - timedelta(hours=48)
     except Order.DoesNotExist:
         return redirect('order')
 
-    return render(request, 'order.html', {
+    return render(request, 'order_history.html', {
         'order': order,
         'order_items': order_items,
         'billing_details': billing_details,
         'subtotal': subtotal,
         'delivery_fee': delivery_fee,
-        'platform_fee' : platform_fee,
-        # 'discount': discount,
+        'platform_fee': platform_fee,
         'total': total,
+        'delete_allowed': delete_allowed,
+        'tracking_stages': tracking_stages,
+    })'''
+'''from datetime import timedelta
+from django.utils import timezone
+from django.shortcuts import redirect, render
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import cache_control
+
+@login_required
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def order_detail(request, order_number):
+    try:
+        order = Order.objects.get(order_number=order_number, user=request.user)
+        tracking_stages = ["ordered", "packed", "shipped", "out_for_delivery", "delivered"]
+
+        # Set the order status based on the time elapsed since creation
+        current_time = timezone.now()
+        elapsed_time = current_time - order.created_at
+
+        if elapsed_time < timedelta(days=1):
+            order_status = "ordered"
+        elif elapsed_time < timedelta(days=2):
+            order_status = "processed"  # Order is processed after 1 day
+        elif elapsed_time < timedelta(days=4):
+            order_status = "shipped"  # Order is shipped after 2 days
+        else:
+            order_status = "delivered"  # Order is delivered after 4 days
+
+        order_items = OrderItem.objects.filter(order=order)
+        billing_details = order.billing_detail
+        subtotal = sum(item.price * item.quantity for item in order_items)
+        delivery_fee = 0  # Set your delivery fee logic here
+        platform_fee = 0  # Set your platform fee logic here
+        total = subtotal + delivery_fee + platform_fee
+        
+        # Check if the order can be deleted
+        delete_allowed = order.created_at >= timezone.now() - timedelta(hours=48)
+    except Order.DoesNotExist:
+        return redirect('order')
+
+    return render(request, 'order_history.html', {
+        'order': order,
+        'order_items': order_items,
+        'billing_details': billing_details,
+        'subtotal': subtotal,
+        'delivery_fee': delivery_fee,
+        'platform_fee': platform_fee,
+        'total': total,
+        'delete_allowed': delete_allowed,
+        'tracking_stages': tracking_stages,
+        'order_status': order_status,  # Pass the order status to the template
     })
+
+'''
+from django.shortcuts import render, redirect
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import cache_control
+from datetime import timedelta
+from .models import Order, OrderItem
+
+@login_required
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def order_detail(request, order_number):
+    try:
+        order = Order.objects.get(order_number=order_number, user=request.user)
+        tracking_stages = ["ordered", "packed", "shipped", "out_for_delivery", "delivered"]
+
+        # Set the order status based on the time elapsed since creation
+        current_time = timezone.now()
+        elapsed_time = current_time - order.created_at
+
+        # Create a dictionary to track the status of each stage
+        stage_status = {
+            'ordered': 'inactive',
+            'packed': 'inactive',
+            'shipped': 'inactive',
+            'out_for_delivery': 'inactive',
+            'delivered': 'inactive'
+        }
+
+        # Update the stage_status based on elapsed time
+        if elapsed_time < timedelta(days=1):
+            stage_status['ordered'] = 'active'
+        elif elapsed_time < timedelta(days=2):
+            stage_status['ordered'] = 'active'
+            stage_status['packed'] = 'active'
+        elif elapsed_time < timedelta(days=4):
+            stage_status['ordered'] = 'active'
+            stage_status['packed'] = 'active'
+            stage_status['shipped'] = 'active'
+        elif elapsed_time < timedelta(days=5):
+            stage_status['ordered'] = 'active'
+            stage_status['packed'] = 'active'
+            stage_status['shipped'] = 'active'
+            stage_status['out_for_delivery'] = 'active'
+        else:
+            for stage in stage_status:
+                stage_status[stage] = 'active'
+
+        order_items = OrderItem.objects.filter(order=order)
+        billing_details = order.billing_detail
+        subtotal = sum(item.price * item.quantity for item in order_items)
+        delivery_fee = 0  # Set your delivery fee logic here
+        platform_fee = 0  # Set your platform fee logic here
+        total = subtotal + delivery_fee + platform_fee
+        
+        # Check if the order can be deleted
+        delete_allowed = order.created_at >= timezone.now() - timedelta(hours=48)
+    except Order.DoesNotExist:
+        return redirect('order')
+
+    return render(request, 'order_history.html', {
+        'order': order,
+        'order_items': order_items,
+        'billing_details': billing_details,
+        'subtotal': subtotal,
+        'delivery_fee': delivery_fee,
+        'platform_fee': platform_fee,
+        'total': total,
+        'delete_allowed': delete_allowed,
+        'stage_status': stage_status,  # Pass the stage statuses to the template
+    })
+
 
 @login_required
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)

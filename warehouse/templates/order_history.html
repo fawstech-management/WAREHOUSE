@@ -418,6 +418,117 @@
         footer a:hover {
             text-decoration: underline;
         }
+        .order-history {
+    width: 90%;
+    margin: 20px auto;
+    font-family: Arial, sans-serif;
+}
+
+.order-card {
+    border: 1px solid #ddd;
+    padding: 20px;
+    border-radius: 10px;
+    background-color: #fafafa;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.tracking-container {
+    margin-top: 20px;
+}
+
+.tracking-stage {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.stage-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #4CAF50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}
+
+.stage-line {
+    flex: 1;
+    height: 2px;
+    background-color: #4CAF50;
+    margin: 0 10px;
+}
+
+.stage-inactive .stage-icon {
+    background-color: #ccc;
+}
+
+.stage-inactive .stage-line {
+    background-color: #ccc;
+}
+
+.stage-name {
+    color: #333;
+}
+
+.no-orders {
+    text-align: center;
+    color: #777;
+}
+
+.go-home a {
+    color: #16a085;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.go-home a:hover {
+    color: #2c3e50;
+}
+.tracking-container {
+    display: flex; /* Use flexbox to align items in a row */
+    align-items: center; /* Center items vertically */
+    justify-content: space-between; /* Distribute space between items */
+}
+
+.tracking-stage {
+    position: relative; /* Position relative to allow for absolute positioning of lines */
+    text-align: center; /* Center text in each stage */
+    flex: 1; /* Allow equal width for each stage */
+}
+
+.stage-line {
+    height: 2px; /* Set the height of the connecting line */
+    background-color: #ccc; /* Color of the line */
+    position: absolute; /* Position absolutely for proper alignment */
+    left: 50%; /* Center the line horizontally */
+    top: 20px; /* Position it below the icons */
+    width: 50%; /* Make the line take up half the width */
+    z-index: -1; /* Send the line behind the icons */
+}
+
+.stage-icon {
+    background-color: #4CAF50; /* Example icon color */
+    color: white; /* Icon text color */
+    border-radius: 50%; /* Make the icon circular */
+    width: 30px; /* Set the width of the icon */
+    height: 30px; /* Set the height of the icon */
+    display: flex; /* Flexbox for centering */
+    align-items: center; /* Center items vertically */
+    justify-content: center; /* Center items horizontally */
+    margin: 0 auto; /* Center the icon within the stage */
+}
+
+.stage-active {
+    background-color: #4CAF50; /* Active stage color */
+}
+
+.stage-inactive {
+    background-color: #ccc; /* Inactive stage color */
+}
 
     </style>
 </head>
@@ -503,33 +614,66 @@
     <div class="main-content">
         <h1>Your Order History</h1>
 
-        {% if orders %}
-            <div class="order-listing">
+        <div class="order-listing">
+            {% if orders %}
                 {% for order in orders %}
-                    <div class="order-card">
-                        <h3>Order Number: {{ order.order_number }}</h3>
-                        <p>Date: {{ order.created_at|date:"F j, Y" }}</p>
-                        <p>Total Amount: ₹{{ order.total_amount }}</p>
-                        <ul class="order-items">
-                            {% for item in order.items.all %}
-                                <img src="{% if item.rambutan_post.image %}/media/{{ item.rambutan_post.image }}{% endif %}" alt="{{ product.name }}" width="100px">
-                                <li><span>{{ item.rambutan_post.product }}</span> - Quantity: {{ item.quantity }} - Price: ₹{{ item.price }}</li>
-                            {% empty %}
-                                <li>No items in this order.</li>
-                            {% endfor %}
-                        </ul>
+                <div class="order-card">
+                    <h3>Order ID: {{ order.order_number }}</h3>
+                    <p>Status: <span class="order-status">{{ order.status }}</span></p>
+                    <p>Order Date: {{ order.created_at|date:"F j, Y" }}</p>
+                    <p>Total: <span class="price">₹{{ order.total_amount }}</span></p>
+
+                    <h4>Items:</h4>
+                    <ul class="order-items">
+                        {% for item in order.items.all %}
+                       <!-- Corrected from order.items.all to order_items -->
+                        <div class="cart-item">
+                            <img src="/media/{{ item.rambutan_post.image }}" alt="{{ item.name }}" width="100px">
+                            <div>{{ item.rambutan_post.product}} (x{{ item.quantity }})</div>
+                            <div>₹{{ item.price }}</div>
+                        </div>
+                        {% endfor %}
+                    </ul>
+
+                    <div class="tracking-container">
+                        <div class="tracking-stage {% if stage_status.order_status == 'active' %}stage-active{% else %}stage-inactive{% endif %}">
+                            <div class="stage-icon">1</div>
+                            <div class="stage-line"></div>
+                            <div class="stage-name">Order Placed</div>
+                        </div>
+                        <div class="tracking-stage {% if stage_status.packed == 'active' %}stage-active{% else %}stage-inactive{% endif %}">
+                            <div class="stage-icon">2</div>
+                            <div class="stage-line"></div>
+                            <div class="stage-name">Packed</div>
+                        </div>
+                        <div class="tracking-stage {% if stage_status.shipped == 'active' %}stage-active{% else %}stage-inactive{% endif %}">
+                            <div class="stage-icon">3</div>
+                            <div class="stage-line"></div>
+                            <div class="stage-name">Shipped</div>
+                        </div>
+                        <div class="tracking-stage {% if stage_status.out_for_delivery == 'active' %}stage-active{% else %}stage-inactive{% endif %}">
+                            <div class="stage-icon">4</div>
+                            <div class="stage-line"></div>
+                            <div class="stage-name">Out for Delivery</div>
+                        </div>
+                        <div class="tracking-stage {% if stage_status.delivered == 'active' %}stage-active{% else %}stage-inactive{% endif %}">
+                            <div class="stage-icon">5</div>
+                            <div class="stage-line"></div>
+                            <div class="stage-name">Delivered</div>
+                        </div>
                     </div>
+                </div>
                 {% endfor %}
-            </div>
-        {% else %}
-            <p class="no-orders">You have not placed any orders yet.</p>
-        {% endif %}
+            {% else %}
+                <div class="no-orders">No orders found.</div>
+            {% endif %}
+        </div>
 
         <div class="go-home">
             <a href="{% url 'customer_dashboard' %}">Go to Home</a>
         </div>
     </div>
-
+</div>
         <!-- Footer -->
         <footer>
             <p>&copy; 2024 Rambutan Shop. All Rights Reserved.</p>
@@ -539,6 +683,28 @@
 
     <!-- JavaScript Files -->
     <script>
+        function showAlert() {
+            Swal.fire({
+                title: 'Success!',
+                text: 'Order updated successfully!',
+                icon: 'success',
+                confirmButtonText: 'Okay'
+            });
+        }
+         function confirmDelete() {
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "You won't be able to revert this!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                }
+        });
+    }
         document.addEventListener('DOMContentLoaded', function () {
             // Select all logout links
             const logoutLinks = document.querySelectorAll('.logout-button, .nav-links a[href="{% url 'logout' %}"]');

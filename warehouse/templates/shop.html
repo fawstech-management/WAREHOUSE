@@ -434,7 +434,18 @@
                 </li>
             </ul>
         </nav>
-
+        <form method="get" action="{% url 'products_browse' %}">
+            <label for="category">Filter by Category:</label>
+            <select name="category" id="category" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="fresh_fruit" {% if category_filter == 'fresh_fruit' %}selected{% endif %}>Fruit</option>
+                <option value="wine" {% if category_filter == 'wine' %}selected{% endif %}>Wine</option>
+                <option value="pickle" {% if category_filter == 'pickle' %}selected{% endif %}>Pickle</option>
+                <option value="juice" {% if category_filter == 'juice' %}selected{% endif %}>Juice</option>
+            </select>
+        </form>
+        
+        
         <!-- Main Content Area -->
         <div class="main-content">
             <h2>Rambutan Products</h2>
@@ -443,7 +454,7 @@
                 <div class="product">
                     <img src="{% if product.image %}/media/{{ product.image }}{% else %}{% static 'images/default_product.jpg' %}{% endif %}" alt="{{ product.name }}" width="100px" >
                     <h3>{{ product.product }}</h3>
-                    <p class="price">₹{{ product.price }} / {{item.quantity_type}}</p>
+                    <p class="price">₹{{ product.price }} / {{ product.quantity_type }}</p>
                     <p>Category: {{ product.category }}</p>
                     <p>Description: {{ product.description }}</p>
                     {% comment %} <p>Farmer: {{ product.rambutanpost.user.username}}</p> {% endcomment %}
@@ -477,31 +488,30 @@
         document.addEventListener('DOMContentLoaded', function () {
             // Select all logout links with the 'logout-button' class
             const logoutLinks = document.querySelectorAll('a.logout-button');
-
+    
             logoutLinks.forEach(function (element) {
                 element.addEventListener('click', function (event) {
                     event.preventDefault(); // Prevent the default logout action
-                    console.log('Logout link clicked'); // Debugging
-
+    
                     Swal.fire({
-                        title: 'Are you sure you want to logout?',
+                        title: 'Are you sure?',
+                        text: "You will be logged out of your account.",
                         icon: 'warning',
                         showCancelButton: true,
-                        confirmButtonText: 'Yes, logout',
-                        cancelButtonText: 'Cancel',
-                        reverseButtons: true
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Yes, log me out',
+                        cancelButtonText: 'Cancel'
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            console.log('User confirmed logout'); // Debugging
-                            // Proceed with logout
-                            window.location.href = element.href;
+                            window.location.href = element.getAttribute('href');
                         }
                     });
                 });
             });
-
         });
     </script>
+    
 
 </body>
 
