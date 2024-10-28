@@ -645,9 +645,9 @@
         
                             <!-- Cancel Order Button -->
                             {% if details.delete_allowed %}
-                                <form action="{% url 'cancel_order' details.order.order_number %}" method="post" class="cancel-order-form">
+                                <form action="{% url 'cancel_order' details.order.order_number %}" method="post" class="cancel-order-form" id="cancel-form-{{ details.order.order_number }}">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-danger">Cancel Order</button>
+                                    <button type="button" class="btn btn-danger cancel-order-btn" data-order-number="{{ details.order.order_number }}">Cancel Order</button>
                                 </form>
                             {% endif %}
                         </div>
@@ -673,6 +673,24 @@
 
     <!-- JavaScript Files -->
     <script>
+         document.querySelectorAll('.cancel-order-btn').forEach(function (element) {
+        element.addEventListener('click', function () {
+            const orderNumber = this.getAttribute('data-order-number');
+            Swal.fire({
+                title: 'Are you sure you want to cancel this order?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, cancel order',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Submit the form programmatically
+                    document.getElementById('cancel-form-' + orderNumber).submit();
+                }
+            });
+        });
+    });
+
         function showAlert() {
             Swal.fire({
                 title: 'Success!',

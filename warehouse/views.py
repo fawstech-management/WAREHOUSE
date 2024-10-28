@@ -836,8 +836,8 @@ def place_order(request):
         return redirect('cart')
 
     subtotal = sum(item.total_price for item in cart_items)
-    delivery_fee = 40
-    platform_fee = 10
+    delivery_fee = 0
+    platform_fee = 0
     # discount = 100
     total = subtotal + delivery_fee + platform_fee
 
@@ -925,7 +925,7 @@ def order_detail(request, order_number):
     except Order.DoesNotExist:
         return redirect('order')
 
-    return render(request, 'order_history.html', {
+    return render(request, 'order.html', {
         'order': order,
         'order_items': order_items,
         'billing_details': billing_details,
@@ -1021,7 +1021,7 @@ def order_history(request):
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
-from .models import Order
+from .models import Order, OrderItem
 from datetime import timedelta
 
 @login_required
@@ -1030,11 +1030,14 @@ def cancel_order(request, order_number):
 
     # Check if the order is eligible for cancellation (created within the last 48 hours)
     if order.created_at >= timezone.now() - timedelta(hours=48):
-        # Set the order status to "Cancelled"
-        order.status = 'Cancelled'
-        order.save()
-        
-        # Now delete the order from the database
+        # Refill quantity in RambutanPost for each item in the order
+        order_items = OrderItem.objects.filter(order=order)
+        for item in order_items:
+            rambutan_post = item.rambutan_post
+            rambutan_post.quantity += item.quantity
+            rambutan_post.save()
+
+        # Delete the order without updating its status
         order.delete()
 
     # Redirect back to the order history page after cancellation
