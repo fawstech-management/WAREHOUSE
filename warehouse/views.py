@@ -817,7 +817,7 @@ def update_billing_details(request, pk):
             messages.error(request, f'Error updating billing details: {e}')
 
     return render(request, 'update_billing_details.html', {'billing_details': billing_details})
-
+'''
 @login_required
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def place_order(request):
@@ -905,6 +905,192 @@ def place_order(request):
         # 'discount': discount,
         'total': total,
     })
+'''
+from django.shortcuts import render, redirect
+from django.conf import settings
+from django.core.mail import send_mail
+from django.views.decorators.cache import cache_control
+from django.contrib.auth.decorators import login_required
+from .models import BillingDetail, Cart, Order, OrderItem, OrderNotification
+import razorpay
+
+@login_required
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def place_order(request):
+    billing_details = BillingDetail.objects.filter(user=request.user).last()
+
+    if not billing_details:
+        return redirect('billing_view')
+
+    cart_items = Cart.objects.filter(user=request.user)
+    if not cart_items.exists():
+        return redirect('cart')
+
+    unavailable_items = cart_items.filter(rambutan_post__is_available=False)
+    if unavailable_items.exists():
+        return redirect('cart')
+
+    subtotal = sum(item.total_price for item in cart_items)
+    delivery_fee = 0
+    platform_fee = 0
+    total = subtotal + delivery_fee + platform_fee
+
+    if request.method == 'POST':
+        payment_method = request.POST.get('payment-method')
+
+        # Create order object but do not save it yet
+        order = Order(
+            billing_detail=billing_details,
+            user=request.user,
+            total_amount=total,
+            payment_method=payment_method
+        )
+
+        if payment_method == 'razorpay':
+            # Initialize Razorpay client
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
+
+            # Create Razorpay order
+            razorpay_order = client.order.create({
+                'amount': int(total * 100),  # amount in paisa
+                'currency': 'INR',
+                'payment_capture': '1'
+            })
+
+            # Save Razorpay order ID in the order model
+            order.razorpay_order_id = razorpay_order['id']
+            order.save()
+
+            # Redirect to Razorpay payment page
+            #return redirect('razorpay_payment_view', order_id=order.id)
+            return redirect('razorpay_payment_view', order_number=order.order_number)
+
+        # For other payment methods (e.g., COD)
+        order.save()
+
+        for item in cart_items:
+            rambutan_post = item.rambutan_post
+            ordered_quantity = item.quantity
+
+            if rambutan_post.quantity_left < ordered_quantity:
+                return redirect('cart')
+
+            rambutan_post.quantity_left -= ordered_quantity
+            if rambutan_post.quantity_left <= 0:
+                rambutan_post.is_available = False
+            rambutan_post.save()
+
+            OrderItem.objects.create(
+                order=order,
+                rambutan_post=rambutan_post,
+                quantity=ordered_quantity,
+                price=item.price
+            )
+
+            # Create order notification for the farmer
+            farmer_details = rambutan_post.farmer
+            register_user = farmer_details.user
+            OrderNotification.objects.create(
+                farmer=register_user,
+                order_number=order.order_number,
+                item_name=rambutan_post.product,
+                quantity=ordered_quantity,
+                price=item.price
+            )
+
+        # Clear the cart
+        cart_items.delete()
+
+        # Send order confirmation email
+        subject = f'Order Confirmation - Order #{order.order_number}'
+        message = (
+            f'Thank you for your order!\n\n'
+            f'Order Number: {order.order_number}\n'
+            f'Total Amount: ₹{total}\n'
+            f'Payment Method: {payment_method}\n\n'
+            f'We will notify you once your items are ready for shipping.'
+        )
+        recipient_list = [request.user.email]
+        send_mail(subject, message, settings.EMAIL_HOST_USER, recipient_list)
+
+        # Redirect to order details
+        return redirect('order_detail', order_number=order.order_number)
+
+    return render(request, 'place_order.html', {
+        'billing_details': billing_details,
+        'cart_items': cart_items,
+        'subtotal': subtotal,
+        'delivery_fee': delivery_fee,
+        'platform_fee': platform_fee,
+        'total': total,
+    })
+
+# views.py
+import razorpay
+from django.conf import settings
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Order
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponseBadRequest
+
+def razorpay_payment_view(request, order_number):
+    order = get_object_or_404(Order, order_number=order_number)
+    # Initialize Razorpay client
+    client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
+
+    # Payment amount in paise (multiply by 100)
+    amount = int(order.total_amount * 100)
+
+    # Create Razorpay order
+    razorpay_order = client.order.create({
+        'amount': amount,
+        'currency': 'INR',
+        'payment_capture': '1'
+    })
+
+    # Store the Razorpay order ID in our order object and save
+    order.razorpay_order_id = razorpay_order['id']
+    order.save()
+
+    # Pass order data to the template
+    context = {
+        'order': order,
+        'razorpay_order_id': razorpay_order['id'],
+        'razorpay_key_id': settings.RAZORPAY_KEY_ID,
+        'amount': amount,
+    }
+
+    return render(request, 'razorpay_payment.html', context)
+@csrf_exempt
+def razorpay_payment_complete(request):
+    if request.method == "POST":
+        data = request.POST
+        try:
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
+            params_dict = {
+                'razorpay_order_id': data['razorpay_order_id'],
+                'razorpay_payment_id': data['razorpay_payment_id'],
+                'razorpay_signature': data['razorpay_signature']
+            }
+
+            # Verify the payment signature
+            client.utility.verify_payment_signature(params_dict)
+
+            # Retrieve the order and update payment details
+            order = Order.objects.get(razorpay_order_id=data['razorpay_order_id'])
+            order.razorpay_payment_id = data['razorpay_payment_id']
+            order.razorpay_signature = data['razorpay_signature']
+            order.payment_status = 'Completed'
+            order.save()
+
+            return redirect('order_detail', order_number=order.order_number)
+
+        except razorpay.errors.SignatureVerificationError:
+            return HttpResponseBadRequest("Signature verification failed.")
+        except Order.DoesNotExist:
+            return HttpResponseBadRequest("Order does not exist.")
+
+    return HttpResponseBadRequest("Invalid request.")
 
 from datetime import timedelta
 from django.utils import timezone

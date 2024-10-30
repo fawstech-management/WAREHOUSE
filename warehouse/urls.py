@@ -60,7 +60,8 @@ urlpatterns = [
     path('edit-farmer-profile/', views.edit_farmer_profile, name='edit_farmer_profile'),
     path('edit-profile/', views.edit_customer_profile, name='edit_customer_profile'),
     path('cancel_order/<str:order_number>/', views.cancel_order, name='cancel_order'),
-
+    path('razorpay-payment/<int:order_number>/', views.razorpay_payment_view, name='razorpay_payment_view'),
+    path('razorpay-payment-complete/', views.razorpay_payment_complete, name='razorpay_payment_complete'),
 
     path('login/', auth_views.LoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),

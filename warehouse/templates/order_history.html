@@ -618,7 +618,7 @@
                     {% for details in order_details %}
                         <div class="order-card">
                             <h3>Order ID: {{ details.order.order_number }}</h3>
-                            <p>Status: <span class="order-status">{{ details.order.status }}</span></p>
+                            <p>Status: <span class="order-status">{{ details.order.order_status }}</span></p>
                             <p>Order Date: {{ details.order.created_at|date:"F j, Y" }}</p>
                             <p>Total: <span class="price">₹{{ details.total }}</span></p>
         
