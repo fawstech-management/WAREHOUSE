@@ -934,7 +934,7 @@ def place_order(request):
     delivery_fee = 0
     platform_fee = 0
     total = subtotal + delivery_fee + platform_fee
-
+    print(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY)
     if request.method == 'POST':
         payment_method = request.POST.get('payment-method')
 
@@ -946,7 +946,9 @@ def place_order(request):
             payment_method=payment_method
         )
 
-        if payment_method == 'razorpay':
+        if payment_method == 'Razorpay':
+            print(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY)
+
             # Initialize Razorpay client
             client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_SECRET_KEY))
 
