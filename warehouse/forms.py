@@ -269,3 +269,14 @@ class CustomPasswordResetForm(PasswordResetForm):
         max_length=254,
         widget=forms.EmailInput(attrs={'autocomplete': 'email', 'class': 'form-control'})
     )
+# forms.py
+from django import forms
+from .models import Feedback
+
+class FeedbackForm(forms.ModelForm):
+    class Meta:
+        model = Feedback
+        fields = ['content', 'rating']
+        widgets = {
+            'content': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Write your feedback here...'}),
+        }

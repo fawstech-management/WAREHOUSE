@@ -2,7 +2,7 @@ from django.urls import path,include
 from .import views
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
-from .views import  CustomPasswordResetConfirmView, CustomPasswordResetView, add_to_wishlist, remove_from_wishlist, update_billing_details
+from .views import  CustomPasswordResetConfirmView, CustomPasswordResetView, add_to_wishlist, remove_from_wishlist, submit_feedback, update_billing_details
 from .views import order_history
 from .views import verify_otp, enter_email,register
 from django.views.generic import TemplateView
@@ -62,7 +62,8 @@ urlpatterns = [
     path('cancel_order/<str:order_number>/', views.cancel_order, name='cancel_order'),
     path('razorpay-payment/<int:order_number>/', views.razorpay_payment_view, name='razorpay_payment_view'),
     path('razorpay-payment-complete/', views.razorpay_payment_complete, name='razorpay_payment_complete'),
-
+    path('product/<int:product_id>/feedback/', submit_feedback, name='submit_feedback'),
+   
     path('login/', auth_views.LoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 

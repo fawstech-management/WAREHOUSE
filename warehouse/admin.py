@@ -113,3 +113,13 @@ class OrderItemAdmin(admin.ModelAdmin):
     list_display = ['id', 'rambutan_post', 'quantity']  # Add fields that actually exist in the model
 
 admin.site.register(OrderItem, OrderItemAdmin)
+# admin.py
+from django.contrib import admin
+from .models import Feedback
+
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ('user', 'rambutan_post', 'rating', 'created_at', 'updated_at')
+    search_fields = ('user__username', 'rambutan_post__title', 'content')
+    list_filter = ('rating', 'created_at')
+
+admin.site.register(Feedback, FeedbackAdmin)

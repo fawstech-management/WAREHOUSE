@@ -356,6 +356,21 @@
         footer a:hover {
             text-decoration: underline;
         }
+        .rating-stars {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .rating-stars i {
+            font-size: 20px;
+            color: #f39c12;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .rating-stars i:hover {
+            color: #e67e22;
+        }
     </style>
 
 </head>
@@ -443,6 +458,13 @@
                 <option value="pickle" {% if category_filter == 'pickle' %}selected{% endif %}>Pickle</option>
                 <option value="juice" {% if category_filter == 'juice' %}selected{% endif %}>Juice</option>
             </select>
+            <label for="min_price">Min Price:</label>
+            <input type="number" name="min_price" id="min_price" min="0" step="1" value="{{ min_price }}" placeholder="Min">
+
+            <label for="max_price">Max Price:</label>
+            <input type="number" name="max_price" id="max_price" min="0" step="1" value="{{ max_price }}" placeholder="Max">
+
+            <button type="submit">Apply Filters</button>
         </form>
         
         
@@ -458,16 +480,22 @@
                     <p>Category: {{ product.category }}</p>
                     <p>Description: {{ product.description }}</p>
                     {% comment %} <p>Farmer: {{ product.rambutanpost.user.username}}</p> {% endcomment %}
-        
+                    
                     {% if product.status_message %}
                         <p class="unavailable">{{ product.status_message }}</p> <!-- Display 'Unavailable' for the product -->
                     {% else %}
+
                         <div class="cart-buttons">
                             <button><a href="{% url 'add_to_wishlist' product.id %}">Add to Wishlist</a></button>
                             <button><a href="{% url 'add_to_cart' product.id %}">Add to Cart</a></button>
                         </div>
                     {% endif %}
-                </div>
+                
+                <div class="rating-stars">
+                    {% for star in "12345" %}
+                    <i class="bx bx-star" onclick="showFeedbackForm('{{ product.id }}', '{{ star }}')"></i>
+                    {% endfor %}
+                </div></div>
                 {% empty %}
                 <p>No products available at the moment.</p>
                 {% endfor %}
@@ -485,6 +513,24 @@
 
     <!-- JavaScript Files -->
     <script>
+         // Function to show feedback form when a star is clicked
+    function showFeedbackForm(productId, rating) {
+        Swal.fire({
+            title: 'Feedback Form',
+            html: `
+                <form id="feedbackForm" method="post" action="{ #}">
+                    {% csrf_token %}
+                    <input type="hidden" name="product_id" value="${productId}">
+                    <input type="hidden" name="rating" value="${rating}">
+                    <textarea name="feedback" placeholder="Write your feedback here..." rows="4" style="width: 100%;"></textarea>
+                </form>
+            `,
+            confirmButtonText: 'Submit',
+            preConfirm: () => {
+                document.getElementById('feedbackForm').submit();
+            }
+        });
+    }
         document.addEventListener('DOMContentLoaded', function () {
             // Select all logout links with the 'logout-button' class
             const logoutLinks = document.querySelectorAll('a.logout-button');

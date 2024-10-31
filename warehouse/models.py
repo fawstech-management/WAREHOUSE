@@ -282,3 +282,13 @@ class OrderNotification(models.Model):
     def __str__(self):
         return f'Order {self.order_number} - {self.item_name}'
 
+class Feedback(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='feedback')
+    rambutan_post = models.ForeignKey(RambutanPost, on_delete=models.CASCADE, null=True, blank=True)  # Optional, if feedback is product-specific
+    content = models.TextField()  # The actual feedback text
+    rating = models.PositiveIntegerField(choices=[(i, i) for i in range(1, 6)], null=True, blank=True)  # Optional rating out of 5
+    created_at = models.DateTimeField(auto_now_add=True)  # Timestamp when feedback is submitted
+    updated_at = models.DateTimeField(auto_now=True)  # Timestamp for updates
+
+    def __str__(self):
+        return f"Feedback from {self.user} - {self.content[:20]}"  # Display first 20 characters of feedback
